@@ -12,21 +12,32 @@
         <div id="status" class="text-center text-[10px] font-bold py-1 mb-4 rounded bg-yellow-100 text-yellow-700">Connecting to Google Sheets...</div>
 
         <div class="mb-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
-            <h2 class="font-bold text-blue-700 uppercase text-[10px] mb-2 tracking-widest text-center">Vinyl Pricing (3.5x Markup)</h2>
+            <h2 class="font-bold text-blue-700 uppercase text-[10px] mb-2 tracking-widest text-center">Custom Vinyl (3.5x Markup)</h2>
             <select id="vinylSelect" class="w-full p-2 border-2 border-gray-200 rounded-lg mb-2 bg-white text-sm outline-none">
                 <option value="none">-- Select Vinyl --</option>
             </select>
-            <input id="vinylLen" type="number" step="any" placeholder="Length (Feet)" class="w-full p-2 border-2 border-gray-200 rounded-lg mb-3 text-sm">
-            
+            <input id="vinylLen" type="number" step="any" placeholder="Length (Feet)" class="w-full p-2 border-2 border-gray-200 rounded-lg text-sm">
+        </div>
+
+        <div class="mb-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
+            <h2 class="font-bold text-emerald-700 uppercase text-[10px] mb-2 tracking-widest text-center">Standard Items (Direct Price)</h2>
+            <select id="itemSelect" class="w-full p-2 border-2 border-gray-200 rounded-lg mb-2 bg-white text-sm">
+                <option value="none">-- Select Item --</option>
+            </select>
+            <input id="itemQty" type="number" step="1" placeholder="Quantity" class="w-full p-2 border-2 border-gray-200 rounded-lg text-sm">
+        </div>
+
+        <div class="mb-4 p-3 bg-blue-50 rounded-xl border border-blue-200">
+            <h2 class="font-bold text-blue-800 uppercase text-[10px] mb-2 tracking-widest text-center">Add-ons</h2>
             <div class="grid grid-cols-2 gap-2">
-                <div class="flex flex-col bg-white p-2 rounded-lg border border-gray-200">
+                <div class="flex flex-col bg-white p-2 rounded-lg border border-blue-100">
                     <span class="text-[10px] font-bold text-gray-500 uppercase">Laminate?</span>
                     <select id="laminate" class="p-1 rounded text-xs font-bold text-blue-800 outline-none">
                         <option value="no">NO</option>
                         <option value="yes">YES</option>
                     </select>
                 </div>
-                <div class="flex flex-col bg-white p-2 rounded-lg border border-gray-200">
+                <div class="flex flex-col bg-white p-2 rounded-lg border border-blue-100">
                     <span class="text-[10px] font-bold text-gray-500 uppercase">Grommetts?</span>
                     <select id="grommetSelect" class="p-1 rounded text-xs font-bold text-blue-800 outline-none">
                         <option value="0">NONE</option>
@@ -37,98 +48,4 @@
             </div>
         </div>
 
-        <div class="mb-4 p-3 bg-slate-50 rounded-xl border border-slate-200">
-            <h2 class="font-bold text-emerald-700 uppercase text-[10px] mb-2 tracking-widest text-center">Banners/Signs/Posters (Direct Price)</h2>
-            <select id="itemSelect" class="w-full p-2 border-2 border-gray-200 rounded-lg mb-2 bg-white text-sm">
-                <option value="none">-- Select Item --</option>
-            </select>
-            <input id="itemQty" type="number" step="1" placeholder="Quantity" class="w-full p-2 border-2 border-gray-200 rounded-lg text-sm">
-        </div>
-
-        <button onclick="calculate()" class="w-full bg-blue-600 text-white font-black py-4 rounded-xl text-xl shadow-lg hover:bg-blue-700 active:scale-95 transition">CALCULATE</button>
-
-        <div id="resultBox" class="hidden mt-4 p-4 bg-green-100 border-2 border-green-500 rounded-xl text-center">
-            <p class="text-green-800 font-bold uppercase tracking-widest text-[10px]">Customer Quote</p>
-            <p id="total" class="text-4xl font-black text-green-900">$0.00</p>
-            <button onclick="location.reload()" class="mt-2 text-[10px] text-green-700 underline block w-full text-center font-bold uppercase">Clear & Refresh</button>
-        </div>
-    </div>
-
-    <script>
-        const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpd0v8hfAE_Ok5bjHS-OnuCjL6dJoaoXm2qGEOV47Ph2AGbZ7deEQd5ln0xfDONyAxIX7sIkr9saB5/pub?output=csv";
-        let pricingData = {};
-
-        fetch(SHEET_URL)
-            .then(res => res.text())
-            .then(data => {
-                const rows = data.split(/\r?\n/).slice(1);
-                const vSelect = document.getElementById('vinylSelect');
-                const iSelect = document.getElementById('itemSelect');
-                
-                rows.forEach(row => {
-                    const columns = row.split(',');
-                    
-                    // Vinyl Items (Col A/B)
-                    const vName = columns[0]?.trim();
-                    const vCost = parseFloat(columns[1]);
-                    if (vName && !isNaN(vCost)) {
-                        pricingData[vName] = vCost;
-                        if (vName.toLowerCase() !== 'laminate') {
-                            let opt = document.createElement('option');
-                            opt.value = vName; opt.textContent = vName;
-                            vSelect.appendChild(opt);
-                        }
-                    }
-
-                    // Direct Price Items (Col D/E)
-                    const iName = columns[3]?.trim();
-                    const iCost = parseFloat(columns[4]);
-                    if (iName && !isNaN(iCost)) {
-                        pricingData[iName] = iCost;
-                        // Filter out grommetts from the main dropdown
-                        if (!iName.toLowerCase().includes('grommett')) {
-                            let opt = document.createElement('option');
-                            opt.value = iName; opt.textContent = iName;
-                            iSelect.appendChild(opt);
-                        }
-                    }
-                });
-                document.getElementById('status').innerText = "✅ Prices Synced";
-                document.getElementById('status').className = "text-center text-[10px] font-bold py-1 mb-4 rounded bg-green-100 text-green-700";
-            })
-            .catch(() => { document.getElementById('status').innerText = "❌ Connection Error"; });
-
-        function calculate() {
-            const vType = document.getElementById('vinylSelect').value, vLen = parseFloat(document.getElementById('vinylLen').value);
-            const iType = document.getElementById('itemSelect').value, iQty = parseFloat(document.getElementById('itemQty').value);
-            const addLam = document.getElementById('laminate').value;
-            const grommetQty = parseInt(document.getElementById('grommetSelect').value);
-            
-            let price = 0;
-
-            if (vType !== "none" && !isNaN(vLen)) {
-                // Vinyl calculation: (Base Cost + Laminate Cost) * length * 3.5 markup
-                const base = pricingData[vType] || 0;
-                const lam = (addLam === 'yes') ? (pricingData['Laminate'] || 0) : 0;
-                price = (vLen * (base + lam)) * 3.5;
-                
-                // Add Grommetts at the very end (direct price per set, no markup)
-                if (grommetQty > 0) {
-                    const grommetCost = pricingData[`Grommett ${grommetQty} set${grommetQty > 1 ? 's' : ''}`] || 0;
-                    price += grommetCost;
-                }
-            } 
-            else if (iType !== "none" && !isNaN(iQty)) {
-                price = (iQty * pricingData[iType]);
-            } else { return alert("Select an item and enter quantity/length!"); }
-
-            document.getElementById('total').innerText = "$" + finalPriceFormat(price);
-            document.getElementById('resultBox').classList.remove('hidden');
-        }
-
-        function finalPriceFormat(num) {
-            return num.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-        }
-    </script>
-</body>
-</html>
+        <button onclick="calculate()" class="w-full bg-blue-600
