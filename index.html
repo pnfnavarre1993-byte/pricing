@@ -51,7 +51,7 @@
     </div>
 
     <script>
-        const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTWBKchl9PZg5iLiG73UCxO_CFU7NOAT8SpcYQ_HeGDoQ-lAScneRG1Sn258LlvvMs7UpJTHPQXvhqq/pub?output=csv";
+        const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpd0v8hfAE_Ok5bjHS-OnuCjL6dJoaoXm2qGEOV47Ph2AGbZ7deEQd5ln0xfDONyAxIX7sIkr9saB5/pub?output=csv";
         let master = {};
 
         async function init() {
@@ -59,17 +59,18 @@
                 const res = await fetch(SHEET_URL + "&cache=" + Date.now());
                 const data = await res.text();
                 data.split(/\r?\n/).slice(1).forEach(row => {
-                    const [cat, name, price] = row.split(',');
-                    if (!cat || !name) return;
-                    const cleanCat = cat.trim().toLowerCase();
-                    const cleanName = name.trim();
-                    master[cleanName] = { cat: cleanCat, price: parseFloat(price) };
+                    const cols = row.split(',');
+                    if (cols.length < 3) return;
+                    const cat = cols[0].trim().toLowerCase();
+                    const name = cols[1].trim();
+                    const price = parseFloat(cols[2]);
+                    master[name] = { cat: cat, price: price };
 
-                    let opt = document.createElement('option'); opt.value = cleanName; opt.textContent = cleanName;
-                    if (cleanCat === 'custom' && cleanName.toLowerCase() !== 'laminate') document.getElementById('customSelect').appendChild(opt);
-                    if (cleanCat === 'standard' && !cleanName.toLowerCase().includes('grommett')) document.getElementById('standardSelect').appendChild(opt);
-                    if (cleanCat === 'poster') {
-                        opt.textContent = cleanName.replace(/poster|size/gi, '').trim();
+                    let opt = document.createElement('option'); opt.value = name; opt.textContent = name;
+                    if (cat === 'custom' && name.toLowerCase() !== 'laminate') document.getElementById('customSelect').appendChild(opt);
+                    if (cat === 'standard' && !name.toLowerCase().includes('grommett')) document.getElementById('standardSelect').appendChild(opt);
+                    if (cat === 'poster') {
+                        opt.textContent = name.replace(/poster|size/gi, '').trim();
                         document.getElementById('posterSelect').appendChild(opt);
                     }
                 });
