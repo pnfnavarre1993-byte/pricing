@@ -16,18 +16,29 @@
             <select id="vinylSelect" class="w-full p-2 border-2 border-gray-200 rounded-lg mb-2 bg-white text-sm outline-none">
                 <option value="none">-- Select Vinyl --</option>
             </select>
-            <input id="vinylLen" type="number" step="any" placeholder="Length (Feet)" class="w-full p-2 border-2 border-gray-200 rounded-lg mb-2 text-sm">
-            <div class="flex items-center justify-between bg-white p-2 rounded-lg border border-gray-200">
-                <span class="text-xs font-bold text-gray-700">Add Laminate?</span>
-                <select id="laminate" class="p-1 rounded border text-xs font-bold text-blue-800">
-                    <option value="no">NO</option>
-                    <option value="yes">YES</option>
-                </select>
+            <input id="vinylLen" type="number" step="any" placeholder="Length (Feet)" class="w-full p-2 border-2 border-gray-200 rounded-lg mb-3 text-sm">
+            
+            <div class="grid grid-cols-2 gap-2">
+                <div class="flex flex-col bg-white p-2 rounded-lg border border-gray-200">
+                    <span class="text-[10px] font-bold text-gray-500 uppercase">Laminate?</span>
+                    <select id="laminate" class="p-1 rounded text-xs font-bold text-blue-800 outline-none">
+                        <option value="no">NO</option>
+                        <option value="yes">YES</option>
+                    </select>
+                </div>
+                <div class="flex flex-col bg-white p-2 rounded-lg border border-gray-200">
+                    <span class="text-[10px] font-bold text-gray-500 uppercase">Grommetts?</span>
+                    <select id="grommetSelect" class="p-1 rounded text-xs font-bold text-blue-800 outline-none">
+                        <option value="0">NONE</option>
+                        <option value="1">1 SET</option>
+                        <option value="2">2 SETS</option>
+                    </select>
+                </div>
             </div>
         </div>
 
         <div class="mb-4 p-3 bg-slate-50 rounded-xl border border-slate-200">
-            <h2 class="font-bold text-emerald-700 uppercase text-[10px] mb-2 tracking-widest text-center">Banners/Signs/Grommetts (Direct Price)</h2>
+            <h2 class="font-bold text-emerald-700 uppercase text-[10px] mb-2 tracking-widest text-center">Banners/Signs/Posters (Direct Price)</h2>
             <select id="itemSelect" class="w-full p-2 border-2 border-gray-200 rounded-lg mb-2 bg-white text-sm">
                 <option value="none">-- Select Item --</option>
             </select>
@@ -57,7 +68,7 @@
                 rows.forEach(row => {
                     const columns = row.split(',');
                     
-                    // Column A & B: Custom Vinyl
+                    // Vinyl Items (Col A/B)
                     const vName = columns[0]?.trim();
                     const vCost = parseFloat(columns[1]);
                     if (vName && !isNaN(vCost)) {
@@ -69,14 +80,17 @@
                         }
                     }
 
-                    // Column D & E: Standard Items (Banners, Signs, Grommetts)
+                    // Direct Price Items (Col D/E)
                     const iName = columns[3]?.trim();
                     const iCost = parseFloat(columns[4]);
                     if (iName && !isNaN(iCost)) {
                         pricingData[iName] = iCost;
-                        let opt = document.createElement('option');
-                        opt.value = iName; opt.textContent = iName;
-                        iSelect.appendChild(opt);
+                        // Filter out grommetts from the main dropdown
+                        if (!iName.toLowerCase().includes('grommett')) {
+                            let opt = document.createElement('option');
+                            opt.value = iName; opt.textContent = iName;
+                            iSelect.appendChild(opt);
+                        }
                     }
                 });
                 document.getElementById('status').innerText = "✅ Prices Synced";
@@ -88,19 +102,32 @@
             const vType = document.getElementById('vinylSelect').value, vLen = parseFloat(document.getElementById('vinylLen').value);
             const iType = document.getElementById('itemSelect').value, iQty = parseFloat(document.getElementById('itemQty').value);
             const addLam = document.getElementById('laminate').value;
+            const grommetQty = parseInt(document.getElementById('grommetSelect').value);
+            
             let price = 0;
 
-            // Math for Vinyl (Columns A/B)
             if (vType !== "none" && !isNaN(vLen)) {
-                price = (vLen * (pricingData[vType] + (addLam === 'yes' ? (pricingData['Laminate'] || 0) : 0))) * 3.5;
+                // Vinyl calculation: (Base Cost + Laminate Cost) * length * 3.5 markup
+                const base = pricingData[vType] || 0;
+                const lam = (addLam === 'yes') ? (pricingData['Laminate'] || 0) : 0;
+                price = (vLen * (base + lam)) * 3.5;
+                
+                // Add Grommetts at the very end (direct price per set, no markup)
+                if (grommetQty > 0) {
+                    const grommetCost = pricingData[`Grommett ${grommetQty} set${grommetQty > 1 ? 's' : ''}`] || 0;
+                    price += grommetCost;
+                }
             } 
-            // Math for Others (Columns D/E)
             else if (iType !== "none" && !isNaN(iQty)) {
                 price = (iQty * pricingData[iType]);
             } else { return alert("Select an item and enter quantity/length!"); }
 
-            document.getElementById('total').innerText = "$" + price.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            document.getElementById('total').innerText = "$" + finalPriceFormat(price);
             document.getElementById('resultBox').classList.remove('hidden');
+        }
+
+        function finalPriceFormat(num) {
+            return num.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
         }
     </script>
 </body>
