@@ -48,4 +48,87 @@
             </div>
         </div>
 
-        <button onclick="calculate()" class="w-full bg-blue-600
+        <button onclick="calculate()" class="w-full bg-blue-600 text-white font-black py-4 rounded-xl text-xl shadow-lg hover:bg-blue-700 active:scale-95 transition">CALCULATE</button>
+
+        <div id="resultBox" class="hidden mt-4 p-4 bg-green-100 border-2 border-green-500 rounded-xl text-center">
+            <p class="text-green-800 font-bold uppercase tracking-widest text-[10px]">Customer Quote</p>
+            <p id="total" class="text-4xl font-black text-green-900">$0.00</p>
+            <button onclick="location.reload()" class="mt-2 text-[10px] text-green-700 underline block w-full text-center font-bold uppercase">Clear & Refresh</button>
+        </div>
+    </div>
+
+    <script>
+        // *** PASTE YOUR GOOGLE CSV LINK BELOW ***
+        const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpd0v8hfAE_Ok5bjHS-OnuCjL6dJoaoXm2qGEOV47Ph2AGbZ7deEQd5ln0xfDONyAxIX7sIkr9saB5/pub?output=csv";
+        
+        let pricingData = {};
+
+        fetch(SHEET_URL)
+            .then(res => res.text())
+            .then(data => {
+                const rows = data.split(/\r?\n/).slice(1);
+                const vSelect = document.getElementById('vinylSelect');
+                const iSelect = document.getElementById('itemSelect');
+                
+                rows.forEach(row => {
+                    const columns = row.split(',');
+                    // Columns A (0) & B (1): Vinyl
+                    if (columns[0] && columns[1]) {
+                        const vName = columns[0].trim();
+                        const vCost = parseFloat(columns[1]);
+                        if (!isNaN(vCost)) {
+                            pricingData[vName] = vCost;
+                            if (vName.toLowerCase() !== 'laminate') {
+                                let opt = document.createElement('option');
+                                opt.value = vName; opt.textContent = vName;
+                                vSelect.appendChild(opt);
+                            }
+                        }
+                    }
+                    // Columns D (3) & E (4): Standard Items
+                    if (columns[3] && columns[4]) {
+                        const iName = columns[3].trim();
+                        const iCost = parseFloat(columns[4]);
+                        if (!isNaN(iCost)) {
+                            pricingData[iName] = iCost;
+                            if (!iName.toLowerCase().includes('grommett')) {
+                                let opt = document.createElement('option');
+                                opt.value = iName; opt.textContent = iName;
+                                iSelect.appendChild(opt);
+                            }
+                        }
+                    }
+                });
+                document.getElementById('status').innerText = "✅ Prices Synced";
+                document.getElementById('status').className = "text-center text-[10px] font-bold py-1 mb-4 rounded bg-green-100 text-green-700";
+            })
+            .catch(() => { document.getElementById('status').innerText = "❌ Connection Error"; });
+
+        function calculate() {
+            const vType = document.getElementById('vinylSelect').value, vLen = parseFloat(document.getElementById('vinylLen').value);
+            const iType = document.getElementById('itemSelect').value, iQty = parseFloat(document.getElementById('itemQty').value);
+            const addLam = document.getElementById('laminate').value;
+            const grommetQty = parseInt(document.getElementById('grommetSelect').value);
+            
+            let price = 0;
+
+            if (vType !== "none" && !isNaN(vLen)) {
+                const lamCost = (addLam === 'yes') ? (pricingData['Laminate'] || 0) : 0;
+                price = (vLen * (pricingData[vType] + lamCost)) * 3.5;
+            } 
+            else if (iType !== "none" && !isNaN(iQty)) {
+                price = (iQty * pricingData[iType]);
+                if (addLam === 'yes') price += (pricingData['Laminate'] || 0) * iQty;
+            } else { return alert("Select an item and enter quantity/length!"); }
+
+            if (grommetQty > 0) {
+                const gKey = `Grommett ${grommetQty} set${grommetQty > 1 ? 's' : ''}`;
+                price += (pricingData[gKey] || 0);
+            }
+
+            document.getElementById('total').innerText = "$" + price.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            document.getElementById('resultBox').classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
