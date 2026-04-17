@@ -12,18 +12,25 @@
         <div id="status" class="text-center text-[10px] font-bold py-1 mb-4 rounded bg-yellow-100 text-yellow-700">Connecting to Google Sheets...</div>
 
         <div class="mb-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
-            <h2 class="font-bold text-blue-700 uppercase text-[10px] mb-2 tracking-widest text-center">Custom Vinyl (Markup Applied)</h2>
-            <select id="vinylSelect" class="w-full p-2 border-2 border-gray-200 rounded-lg mb-2 bg-white text-sm outline-none"><option value="none">-- Select Vinyl --</option></select>
+            <h2 class="font-bold text-blue-700 uppercase text-[10px] mb-2 tracking-widest text-center">Vinyl Pricing (3.5x Markup)</h2>
+            <select id="vinylSelect" class="w-full p-2 border-2 border-gray-200 rounded-lg mb-2 bg-white text-sm outline-none">
+                <option value="none">-- Select Vinyl --</option>
+            </select>
             <input id="vinylLen" type="number" step="any" placeholder="Length (Feet)" class="w-full p-2 border-2 border-gray-200 rounded-lg mb-2 text-sm">
             <div class="flex items-center justify-between bg-white p-2 rounded-lg border border-gray-200">
                 <span class="text-xs font-bold text-gray-700">Add Laminate?</span>
-                <select id="laminate" class="p-1 rounded border text-xs font-bold text-blue-800"><option value="no">NO</option><option value="yes">YES</option></select>
+                <select id="laminate" class="p-1 rounded border text-xs font-bold text-blue-800">
+                    <option value="no">NO</option>
+                    <option value="yes">YES</option>
+                </select>
             </div>
         </div>
 
         <div class="mb-4 p-3 bg-slate-50 rounded-xl border border-slate-200">
-            <h2 class="font-bold text-emerald-700 uppercase text-[10px] mb-2 tracking-widest text-center">Signs/Posters/Standard (Direct Price)</h2>
-            <select id="itemSelect" class="w-full p-2 border-2 border-gray-200 rounded-lg mb-2 bg-white text-sm"><option value="none">-- Select Item --</option></select>
+            <h2 class="font-bold text-emerald-700 uppercase text-[10px] mb-2 tracking-widest text-center">Banners/Signs/Grommetts (Direct Price)</h2>
+            <select id="itemSelect" class="w-full p-2 border-2 border-gray-200 rounded-lg mb-2 bg-white text-sm">
+                <option value="none">-- Select Item --</option>
+            </select>
             <input id="itemQty" type="number" step="1" placeholder="Quantity" class="w-full p-2 border-2 border-gray-200 rounded-lg text-sm">
         </div>
 
@@ -37,7 +44,7 @@
     </div>
 
     <script>
-        const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpd0v8hfAE_Ok5bjHS-OnuCjL6dJoaoXm2qGEOV47Ph2AGbZ7deEQd5ln0xfDONyAxIX7sIkr9saB5/pub?output=csv&cachebust=" + Math.random();
+        const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpd0v8hfAE_Ok5bjHS-OnuCjL6dJoaoXm2qGEOV47Ph2AGbZ7deEQd5ln0xfDONyAxIX7sIkr9saB5/pub?output=csv";
         let pricingData = {};
 
         fetch(SHEET_URL)
@@ -49,15 +56,27 @@
                 
                 rows.forEach(row => {
                     const columns = row.split(',');
-                    const name = columns[0]?.trim();
-                    const cost = parseFloat(columns[1]);
-                    if (name && !isNaN(cost)) {
-                        pricingData[name] = cost;
+                    
+                    // Column A & B: Custom Vinyl
+                    const vName = columns[0]?.trim();
+                    const vCost = parseFloat(columns[1]);
+                    if (vName && !isNaN(vCost)) {
+                        pricingData[vName] = vCost;
+                        if (vName.toLowerCase() !== 'laminate') {
+                            let opt = document.createElement('option');
+                            opt.value = vName; opt.textContent = vName;
+                            vSelect.appendChild(opt);
+                        }
+                    }
+
+                    // Column D & E: Standard Items (Banners, Signs, Grommetts)
+                    const iName = columns[3]?.trim();
+                    const iCost = parseFloat(columns[4]);
+                    if (iName && !isNaN(iCost)) {
+                        pricingData[iName] = iCost;
                         let opt = document.createElement('option');
-                        opt.value = name; opt.textContent = name;
-                        const low = name.toLowerCase();
-                        if (low.includes('sign') || low.includes('poster') || low.includes('standard')) iSelect.appendChild(opt);
-                        else if (low !== 'laminate') vSelect.appendChild(opt);
+                        opt.value = iName; opt.textContent = iName;
+                        iSelect.appendChild(opt);
                     }
                 });
                 document.getElementById('status').innerText = "✅ Prices Synced";
@@ -71,9 +90,12 @@
             const addLam = document.getElementById('laminate').value;
             let price = 0;
 
+            // Math for Vinyl (Columns A/B)
             if (vType !== "none" && !isNaN(vLen)) {
-                price = (vLen * (pricingData[vType] + (addLam === 'yes' ? pricingData['Laminate'] : 0))) * 3.5;
-            } else if (iType !== "none" && !isNaN(iQty)) {
+                price = (vLen * (pricingData[vType] + (addLam === 'yes' ? (pricingData['Laminate'] || 0) : 0))) * 3.5;
+            } 
+            // Math for Others (Columns D/E)
+            else if (iType !== "none" && !isNaN(iQty)) {
                 price = (iQty * pricingData[iType]);
             } else { return alert("Select an item and enter quantity/length!"); }
 
