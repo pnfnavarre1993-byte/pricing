@@ -1,201 +1,66 @@
-<script>
-    const URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTWBKchl9PZg5iLiG73UCxO_CFU7NOAT8SpcYQ_HeGDoQ-lAScneRG1Sn258LlvvMs7UpJTHPQXvhqq/pub?output=csv";
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Pack-N-Fax Pricing Tool</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-4 flex justify-center font-sans">
+    <div class="bg-white p-6 rounded-2xl shadow-xl w-full max-w-md border border-gray-200">
+        <h1 class="text-2xl font-bold mb-4 text-blue-800 border-b pb-4 text-center tracking-tight">Shop Quote Tool</h1>
+        
+        <div id="status" class="text-center text-[10px] font-bold py-1 mb-4 rounded bg-yellow-100 text-yellow-700 italic">Connecting to Master List...</div>
 
-    let db = {};
+        <div class="space-y-4">
+            <div class="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                <h2 class="font-bold text-blue-700 uppercase text-[10px] mb-2 tracking-widest text-center">Custom Products (3.5x Markup)</h2>
+                <select id="customSelect" class="w-full p-2 border-2 border-gray-200 rounded-lg text-sm bg-white outline-none">
+                    <option value="none">-- Select Product --</option>
+                </select>
+                <div class="mt-2">
+                    <span class="text-[9px] font-bold text-gray-400 uppercase ml-1">Running Length (Feet)</span>
+                    <input id="customLen" type="number" step="any" placeholder="0" class="w-full p-2 border-2 border-gray-200 rounded-lg text-sm outline-none">
+                </div>
+            </div>
 
-    async function load() {
-        const status = document.getElementById('status');
-        try {
-            const r = await fetch(URL + "&t=" + Date.now(), { cache: "no-store" });
-            if (!r.ok) throw new Error("Network error: " + r.status);
-            const t = await r.text();
+            <div class="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                <h2 class="font-bold text-emerald-700 uppercase text-[10px] mb-2 tracking-widest text-center">Standard Banners & Signs</h2>
+                <select id="standardSelect" class="w-full p-2 border-2 border-gray-200 rounded-lg text-sm bg-white outline-none">
+                    <option value="none">-- Select Item --</option>
+                </select>
+                <div class="mt-2">
+                    <span class="text-[9px] font-bold text-gray-400 uppercase ml-1">Quantity</span>
+                    <input id="standardQty" type="number" step="1" placeholder="0" class="w-full p-2 border-2 border-gray-200 rounded-lg text-sm outline-none">
+                </div>
+            </div>
 
-            clearSelect('cSel');
-            clearSelect('sSel');
-            clearSelect('pSel');
-            db = {};
+            <div class="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                <h2 class="font-bold text-orange-600 uppercase text-[10px] mb-2 tracking-widest text-center">Posters</h2>
+                <select id="posterSelect" onchange="togglePosterFields()" class="w-full p-2 border-2 border-gray-200 rounded-lg text-sm bg-white outline-none">
+                    <option value="none">-- Select Size --</option>
+                </select>
+                
+                <div id="pStandardQtyBox" class="mt-2">
+                    <span class="text-[9px] font-bold text-gray-400 uppercase ml-1">Quantity</span>
+                    <input id="posterQty" type="number" step="1" placeholder="0" class="w-full p-2 border-2 border-gray-200 rounded-lg text-sm outline-none">
+                </div>
 
-            const rows = t.split(/\r?\n/);
+                <div id="pCustomSizeBox" class="hidden space-y-2 mt-2">
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <span class="text-[9px] font-bold text-gray-400 uppercase ml-1">Height (In)</span>
+                            <input id="posterH" type="number" step="any" class="w-full p-2 border-2 border-gray-200 rounded-lg text-sm outline-none">
+                        </div>
+                        <div>
+                            <span class="text-[9px] font-bold text-gray-400 uppercase ml-1">Width (In)</span>
+                            <input id="posterW" type="number" step="any" class="w-full p-2 border-2 border-gray-200 rounded-lg text-sm outline-none">
+                        </div>
+                    </div>
+                    <p class="text-[9px] text-orange-600 font-bold text-center italic">Calculated per sq ft</p>
+                </div>
+            </div>
 
-            rows.forEach((row, idx) => {
-                if (!row.trim()) return;
-
-                const cols = row.split(',').map(c => c.trim());
-                if (cols.length === 0) return;
-
-                // Detect header rows and skip them
-                const first = (cols[0] || '').toLowerCase();
-                if (
-                    first === 'category' ||
-                    first === 'product' ||
-                    first === 'poster size'
-                ) {
-                    return;
-                }
-
-                // --- CASE 1: 3-column rows: Category, Name, Price ---
-                if (cols.length >= 3 && cols[0] && cols[1]) {
-                    const catRaw   = cols[0];
-                    const nameRaw  = cols[1];
-                    const priceRaw = cols[2].replace(/[^0-9.\-]/g, '');
-                    const price    = parseFloat(priceRaw);
-
-                    if (!nameRaw || isNaN(price)) return;
-
-                    addItem(catRaw, nameRaw, price);
-                    return;
-                }
-
-                // --- CASE 2: 2-column rows: Name, Price ---
-                if (cols.length >= 2) {
-                    const nameRaw  = cols[0].replace(/^"|"$/g, '');
-                    const priceRaw = cols[1].replace(/[^0-9.\-]/g, '');
-                    const price    = parseFloat(priceRaw);
-
-                    if (!nameRaw || isNaN(price)) return;
-
-                    // Infer category from the name
-                    let catRaw = 'other';
-                    const lower = nameRaw.toLowerCase();
-
-                    if (lower.startsWith('standard banner')) {
-                        catRaw = 'standard';
-                    } else if (lower.startsWith('standard yard sign')) {
-                        catRaw = 'standard';
-                    } else if (lower.startsWith('poster')) {
-                        catRaw = 'poster';
-                    }
-
-                    addItem(catRaw, nameRaw, price);
-                    return;
-                }
-            });
-
-            status.innerText = "✅ Items Synced";
-            status.className = "text-center text-[10px] font-bold py-1 mb-4 rounded bg-green-100 text-green-700";
-        } catch (e) {
-            console.error(e);
-            status.innerText = "❌ Sync Error";
-            status.className = "text-center text-[10px] font-bold py-1 mb-4 rounded bg-red-100 text-red-700";
-        }
-    }
-
-    function addItem(catRaw, nameRaw, price) {
-        const catLower  = (catRaw || '').toLowerCase();
-        const nameLower = (nameRaw || '').toLowerCase();
-
-        db[nameRaw] = { cat: catLower, price };
-
-        const opt = document.createElement('option');
-        opt.value = nameRaw;
-        opt.textContent = nameRaw;
-
-        // Custom products (3.5x)
-        if (catLower.includes('custom') && nameLower !== 'laminate') {
-            document.getElementById('cSel').appendChild(opt);
-            return;
-        }
-
-        // Standard banners & yard signs
-        if (catLower.includes('standard')) {
-            // Don’t show grommet add-ons here
-            if (!nameLower.includes('grommett') && !nameLower.includes('grommet')) {
-                document.getElementById('sSel').appendChild(opt);
-            }
-            return;
-        }
-
-        // Posters (both from first table and "Poster ..." rows)
-        if (catLower.includes('poster')) {
-            opt.textContent = nameRaw
-                .replace(/poster size/gi, '')
-                .replace(/poster/gi, '')
-                .replace(/"/g, '')
-                .trim();
-            document.getElementById('pSel').appendChild(opt);
-            return;
-        }
-
-        // Add-on (grommetts) → keep in db only, no dropdown
-        if (catLower.includes('add-on') || catLower.includes('addon')) {
-            return;
-        }
-    }
-
-    function clearSelect(id) {
-        const sel = document.getElementById(id);
-        while (sel.options.length > 1) {
-            sel.remove(1);
-        }
-    }
-
-    function toggleP() {
-        const val = document.getElementById('pSel').value || '';
-        const isC = val.toLowerCase().includes('custom');
-        document.getElementById('pCust').classList.toggle('hidden', !isC);
-        document.getElementById('pStd').classList.toggle('hidden', isC);
-    }
-
-    function calculate() {
-        const cN = document.getElementById('cSel').value;
-        const cL = parseFloat(document.getElementById('cLen').value);
-
-        const sN = document.getElementById('sSel').value;
-        const sQ = parseFloat(document.getElementById('sQty').value);
-
-        const pN = document.getElementById('pSel').value;
-        const pQ = parseFloat(document.getElementById('pQty').value);
-
-        const pH = parseFloat(document.getElementById('pH').value);
-        const pW = parseFloat(document.getElementById('pW').value);
-
-        const lam = document.getElementById('lam').value;
-        const gr  = document.getElementById('grom').value;
-
-        let total = 0;
-        const lamPrice = db['Laminate']?.price || 0;
-
-        // Custom products (3.5x)
-        if (cN !== "none" && !isNaN(cL)) {
-            if (!db[cN]) return alert("Selected custom item not found in price list.");
-            const base = db[cN].price + (lam === 'yes' ? lamPrice : 0);
-            total = cL * base * 3.5;
-        }
-        // Standard banners & signs
-        else if (sN !== "none" && !isNaN(sQ)) {
-            if (!db[sN]) return alert("Selected standard item not found in price list.");
-            total = sQ * db[sN].price;
-            if (lam === 'yes') total += lamPrice * sQ;
-        }
-        // Posters
-        else if (pN !== "none") {
-            if (!db[pN]) return alert("Selected poster item not found in price list.");
-            const isCustomPoster = pN.toLowerCase().includes('custom');
-
-            if (isCustomPoster) {
-                if (isNaN(pH) || isNaN(pW)) return alert("Enter height and width for custom poster.");
-                const areaSqFt = (pH * pW) / 144;
-                total = areaSqFt * db[pN].price;
-            } else {
-                if (isNaN(pQ)) return alert("Enter quantity for poster.");
-                total = pQ * db[pN].price;
-            }
-        } else {
-            return alert("Select an item and enter required values.");
-        }
-
-        // Grommetts add-on
-        if (gr !== "0") {
-            const gName1 = `Grommett ${gr} set`;
-            const gName2 = `Grommet ${gr} set`;
-            if (db[gName1]) total += db[gName1].price;
-            else if (db[gName2]) total += db[gName2].price;
-        }
-
-        document.getElementById('total').innerText =
-            "$" + total.toLocaleString(undefined, { minimumFractionDigits: 2 });
-        document.getElementById('resBox').classList.remove('hidden');
-    }
-
-    load();
-</script>
+            <div class="p-4 bg-blue-50 rounded-xl border border-blue-200 grid grid-cols-2 gap-3">
+                <div class="flex flex-col">
+                    <span class="text-[10px] font-bold text-gray-500 uppercase mb-1">Add Laminate?</span>
+                    <select id="laminate" class="p-2 rounded-lg text-sm font-bold text-blue-800 border-2 border-blue-100 bg-white outline-none">
