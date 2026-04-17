@@ -1,201 +1,134 @@
 <script>
-    const URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTWBKchl9PZg5iLiG73UCxO_CFU7NOAT8SpcYQ_HeGDoQ-lAScneRG1Sn258LlvvMs7UpJTHPQXvhqq/pub?output=csv";
+const URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTWBKchl9PZg5iLiG73UCxO_CFU7NOAT8SpcYQ_HeGDoQ-lAScneRG1Sn258LlvvMs7UpJTHPQXvhqq/pub?output=csv";
 
-    let db = {};
+let db = {};
 
-    async function load() {
-        const status = document.getElementById('status');
-        try {
-            const r = await fetch(URL + "&t=" + Date.now(), { cache: "no-store" });
-            if (!r.ok) throw new Error("Network error: " + r.status);
-            const t = await r.text();
+async function load() {
+    const status = document.getElementById('status');
+    try {
+        const r = await fetch(URL + "&t=" + Date.now());
+        const text = await r.text();
+        const rows = text.split(/\r?\n/);
 
-            clearSelect('cSel');
-            clearSelect('sSel');
-            clearSelect('pSel');
-            db = {};
+        clearSelect('cSel');
+        clearSelect('sSel');
+        clearSelect('pSel');
 
-            const rows = t.split(/\r?\n/);
+        let mode = "custom"; // which table we are in
 
-            rows.forEach((row, idx) => {
-                if (!row.trim()) return;
+        rows.forEach((row) => {
+            if (!row.trim()) return;
 
-                const cols = row.split(',').map(c => c.trim());
-                if (cols.length === 0) return;
+            const cols = row.split(',').map(c => c.trim());
 
-                // Detect header rows and skip them
-                const first = (cols[0] || '').toLowerCase();
-                if (
-                    first === 'category' ||
-                    first === 'product' ||
-                    first === 'poster size'
-                ) {
-                    return;
+            // Detect table headers
+            if (/^product name/i.test(cols[0])) { mode = "custom"; return; }
+            if (/^product$/i.test(cols[0])) { mode = "standard"; return; }
+            if (/^poster size/i.test(cols[0])) { mode = "poster"; return; }
+
+            // CUSTOM TABLE (3 columns)
+            if (mode === "custom") {
+                if (cols.length < 2) return;
+                const name = cols[0];
+                const price = parseFloat(cols[1].replace(/[^0-9.\-]/g, ''));
+                if (isNaN(price)) return;
+
+                db[name] = { cat: "custom", price };
+
+                // Add to dropdown
+                if (!name.toLowerCase().includes("grommet")) {
+                    document.getElementById('cSel').append(new Option(name, name));
                 }
-
-                // --- CASE 1: 3-column rows: Category, Name, Price ---
-                if (cols.length >= 3 && cols[0] && cols[1]) {
-                    const catRaw   = cols[0];
-                    const nameRaw  = cols[1];
-                    const priceRaw = cols[2].replace(/[^0-9.\-]/g, '');
-                    const price    = parseFloat(priceRaw);
-
-                    if (!nameRaw || isNaN(price)) return;
-
-                    addItem(catRaw, nameRaw, price);
-                    return;
-                }
-
-                // --- CASE 2: 2-column rows: Name, Price ---
-                if (cols.length >= 2) {
-                    const nameRaw  = cols[0].replace(/^"|"$/g, '');
-                    const priceRaw = cols[1].replace(/[^0-9.\-]/g, '');
-                    const price    = parseFloat(priceRaw);
-
-                    if (!nameRaw || isNaN(price)) return;
-
-                    // Infer category from the name
-                    let catRaw = 'other';
-                    const lower = nameRaw.toLowerCase();
-
-                    if (lower.startsWith('standard banner')) {
-                        catRaw = 'standard';
-                    } else if (lower.startsWith('standard yard sign')) {
-                        catRaw = 'standard';
-                    } else if (lower.startsWith('poster')) {
-                        catRaw = 'poster';
-                    }
-
-                    addItem(catRaw, nameRaw, price);
-                    return;
-                }
-            });
-
-            status.innerText = "✅ Items Synced";
-            status.className = "text-center text-[10px] font-bold py-1 mb-4 rounded bg-green-100 text-green-700";
-        } catch (e) {
-            console.error(e);
-            status.innerText = "❌ Sync Error";
-            status.className = "text-center text-[10px] font-bold py-1 mb-4 rounded bg-red-100 text-red-700";
-        }
-    }
-
-    function addItem(catRaw, nameRaw, price) {
-        const catLower  = (catRaw || '').toLowerCase();
-        const nameLower = (nameRaw || '').toLowerCase();
-
-        db[nameRaw] = { cat: catLower, price };
-
-        const opt = document.createElement('option');
-        opt.value = nameRaw;
-        opt.textContent = nameRaw;
-
-        // Custom products (3.5x)
-        if (catLower.includes('custom') && nameLower !== 'laminate') {
-            document.getElementById('cSel').appendChild(opt);
-            return;
-        }
-
-        // Standard banners & yard signs
-        if (catLower.includes('standard')) {
-            // Don’t show grommet add-ons here
-            if (!nameLower.includes('grommett') && !nameLower.includes('grommet')) {
-                document.getElementById('sSel').appendChild(opt);
+                return;
             }
-            return;
-        }
 
-        // Posters (both from first table and "Poster ..." rows)
-        if (catLower.includes('poster')) {
-            opt.textContent = nameRaw
-                .replace(/poster size/gi, '')
-                .replace(/poster/gi, '')
-                .replace(/"/g, '')
-                .trim();
-            document.getElementById('pSel').appendChild(opt);
-            return;
-        }
+            // STANDARD TABLE (2 columns)
+            if (mode === "standard") {
+                if (cols.length < 2) return;
+                const name = cols[0];
+                const price = parseFloat(cols[1].replace(/[^0-9.\-]/g, ''));
+                if (isNaN(price)) return;
 
-        // Add-on (grommetts) → keep in db only, no dropdown
-        if (catLower.includes('add-on') || catLower.includes('addon')) {
-            return;
-        }
-    }
+                db[name] = { cat: "standard", price };
 
-    function clearSelect(id) {
-        const sel = document.getElementById(id);
-        while (sel.options.length > 1) {
-            sel.remove(1);
-        }
-    }
-
-    function toggleP() {
-        const val = document.getElementById('pSel').value || '';
-        const isC = val.toLowerCase().includes('custom');
-        document.getElementById('pCust').classList.toggle('hidden', !isC);
-        document.getElementById('pStd').classList.toggle('hidden', isC);
-    }
-
-    function calculate() {
-        const cN = document.getElementById('cSel').value;
-        const cL = parseFloat(document.getElementById('cLen').value);
-
-        const sN = document.getElementById('sSel').value;
-        const sQ = parseFloat(document.getElementById('sQty').value);
-
-        const pN = document.getElementById('pSel').value;
-        const pQ = parseFloat(document.getElementById('pQty').value);
-
-        const pH = parseFloat(document.getElementById('pH').value);
-        const pW = parseFloat(document.getElementById('pW').value);
-
-        const lam = document.getElementById('lam').value;
-        const gr  = document.getElementById('grom').value;
-
-        let total = 0;
-        const lamPrice = db['Laminate']?.price || 0;
-
-        // Custom products (3.5x)
-        if (cN !== "none" && !isNaN(cL)) {
-            if (!db[cN]) return alert("Selected custom item not found in price list.");
-            const base = db[cN].price + (lam === 'yes' ? lamPrice : 0);
-            total = cL * base * 3.5;
-        }
-        // Standard banners & signs
-        else if (sN !== "none" && !isNaN(sQ)) {
-            if (!db[sN]) return alert("Selected standard item not found in price list.");
-            total = sQ * db[sN].price;
-            if (lam === 'yes') total += lamPrice * sQ;
-        }
-        // Posters
-        else if (pN !== "none") {
-            if (!db[pN]) return alert("Selected poster item not found in price list.");
-            const isCustomPoster = pN.toLowerCase().includes('custom');
-
-            if (isCustomPoster) {
-                if (isNaN(pH) || isNaN(pW)) return alert("Enter height and width for custom poster.");
-                const areaSqFt = (pH * pW) / 144;
-                total = areaSqFt * db[pN].price;
-            } else {
-                if (isNaN(pQ)) return alert("Enter quantity for poster.");
-                total = pQ * db[pN].price;
+                if (!name.toLowerCase().includes("grommet")) {
+                    document.getElementById('sSel').append(new Option(name, name));
+                }
+                return;
             }
+
+            // POSTER TABLE (2 columns)
+            if (mode === "poster") {
+                if (cols.length < 2) return;
+                const name = cols[0].replace(/"/g, '');
+                const price = parseFloat(cols[1].replace(/[^0-9.\-]/g, ''));
+                if (isNaN(price)) return;
+
+                db[name] = { cat: "poster", price };
+
+                const clean = name.replace(/poster/gi, '').trim();
+                document.getElementById('pSel').append(new Option(clean, name));
+                return;
+            }
+        });
+
+        status.innerText = "✅ Items Synced";
+        status.className = "text-center text-[10px] font-bold py-1 mb-4 rounded bg-green-100 text-green-700";
+
+    } catch (err) {
+        console.error(err);
+        status.innerText = "❌ Sync Error";
+        status.className = "text-center text-[10px] font-bold py-1 mb-4 rounded bg-red-100 text-red-700";
+    }
+}
+
+function clearSelect(id) {
+    const sel = document.getElementById(id);
+    while (sel.options.length > 1) sel.remove(1);
+}
+
+function toggleP() {
+    const val = document.getElementById('pSel').value || '';
+    const isCustom = val.toLowerCase().includes('custom');
+    document.getElementById('pCust').classList.toggle('hidden', !isCustom);
+    document.getElementById('pStd').classList.toggle('hidden', isCustom);
+}
+
+function calculate() {
+    const cN = cSel.value, cL = parseFloat(cLen.value);
+    const sN = sSel.value, sQ = parseFloat(sQty.value);
+    const pN = pSel.value, pQ = parseFloat(pQty.value);
+    const pH = parseFloat(pH.value), pW = parseFloat(pW.value);
+    const lam = lam.value, gr = grom.value;
+
+    let total = 0;
+    const lamPrice = db["Laminate"]?.price || 0;
+
+    if (cN !== "none" && !isNaN(cL)) {
+        total = cL * db[cN].price * 3.5;
+        if (lam === "yes") total += lamPrice * cL;
+    }
+    else if (sN !== "none" && !isNaN(sQ)) {
+        total = sQ * db[sN].price;
+        if (lam === "yes") total += lamPrice * sQ;
+    }
+    else if (pN !== "none") {
+        if (pN.toLowerCase().includes("custom")) {
+            const sqft = (pH * pW) / 144;
+            total = sqft * db[pN].price;
         } else {
-            return alert("Select an item and enter required values.");
+            total = pQ * db[pN].price;
         }
-
-        // Grommetts add-on
-        if (gr !== "0") {
-            const gName1 = `Grommett ${gr} set`;
-            const gName2 = `Grommet ${gr} set`;
-            if (db[gName1]) total += db[gName1].price;
-            else if (db[gName2]) total += db[gName2].price;
-        }
-
-        document.getElementById('total').innerText =
-            "$" + total.toLocaleString(undefined, { minimumFractionDigits: 2 });
-        document.getElementById('resBox').classList.remove('hidden');
     }
 
-    load();
+    if (gr !== "0") {
+        const gName = `Grommet ${gr} set`;
+        if (db[gName]) total += db[gName].price;
+    }
+
+    totalEl.innerText = "$" + total.toFixed(2);
+    resBox.classList.remove("hidden");
+}
+
+load();
 </script>
