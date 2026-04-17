@@ -12,13 +12,13 @@
         <div id="status" class="text-center text-[10px] font-bold py-1 mb-4 rounded bg-yellow-100 text-yellow-700">Connecting...</div>
 
         <div class="mb-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
-            <h2 class="font-bold text-blue-700 uppercase text-[10px] mb-2 tracking-widest text-center">Custom Vinyl (3.5x)</h2>
-            <select id="vinylSelect" class="w-full p-2 border-2 border-gray-200 rounded-lg mb-2 text-sm outline-none"><option value="none">-- Select Vinyl --</option></select>
+            <h2 class="font-bold text-blue-700 uppercase text-[10px] mb-2 tracking-widest text-center">Custom Products (3.5x)</h2>
+            <select id="vinylSelect" class="w-full p-2 border-2 border-gray-200 rounded-lg mb-2 text-sm outline-none"><option value="none">-- Select Product --</option></select>
             <input id="vinylLen" type="number" step="any" placeholder="Length (Feet)" class="w-full p-2 border-2 border-gray-200 rounded-lg text-sm outline-none">
         </div>
 
         <div class="mb-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
-            <h2 class="font-bold text-emerald-700 uppercase text-[10px] mb-2 tracking-widest text-center">Standard Items (Direct)</h2>
+            <h2 class="font-bold text-emerald-700 uppercase text-[10px] mb-2 tracking-widest text-center">Standard Banners & Yard Signs (Direct)</h2>
             <select id="itemSelect" class="w-full p-2 border-2 border-gray-200 rounded-lg mb-2 text-sm outline-none"><option value="none">-- Select Item --</option></select>
             <input id="itemQty" type="number" step="1" placeholder="Quantity" class="w-full p-2 border-2 border-gray-200 rounded-lg text-sm outline-none">
         </div>
@@ -57,9 +57,8 @@
         <button onclick="calculate()" class="w-full bg-blue-600 text-white font-black py-4 rounded-xl text-xl shadow-lg active:scale-95 transition">CALCULATE</button>
 
         <div id="resultBox" class="hidden mt-4 p-4 bg-green-100 border-2 border-green-500 rounded-xl text-center">
-            <p class="text-green-800 font-bold uppercase tracking-widest text-[10px]">Customer Quote</p>
             <p id="total" class="text-4xl font-black text-green-900">$0.00</p>
-            <button onclick="location.reload()" class="mt-2 text-[10px] text-green-700 underline block w-full text-center font-bold">CLEAR & RESET</button>
+            <button onclick="location.reload()" class="mt-2 text-[10px] text-green-700 underline block w-full text-center font-bold">CLEAR</button>
         </div>
     </div>
 
@@ -71,11 +70,8 @@
             const rows = data.split(/\r?\n/).slice(1);
             rows.forEach(row => {
                 const cols = row.split(',');
-                // Vinyl (Cols A/B)
                 if (cols[0] && cols[1]) pricingData[cols[0].trim()] = parseFloat(cols[1]);
-                // Items (Cols D/E)
                 if (cols[3] && cols[4]) pricingData[cols[3].trim()] = parseFloat(cols[4]);
-                // Posters (Cols G/H)
                 if (cols[6] && cols[7]) pricingData[cols[6].trim()] = parseFloat(cols[7]);
             });
             updateDropdowns();
@@ -87,13 +83,10 @@
             for (let key in pricingData) {
                 let opt = document.createElement('option'); opt.value = key; opt.textContent = key;
                 const lower = key.toLowerCase();
-                
-                if (lower.includes('poster')) {
-                    document.getElementById('posterSelect').appendChild(opt);
-                } else if (lower.includes('vinyl') || lower.includes('banner')) {
-                    if (lower !== 'laminate' && !lower.includes('standard')) document.getElementById('vinylSelect').appendChild(opt);
-                    else if (lower.includes('standard')) document.getElementById('itemSelect').appendChild(opt);
-                } else if (lower.includes('sign') || lower.includes('grommett')) {
+                if (lower.includes('poster')) document.getElementById('posterSelect').appendChild(opt);
+                else if (lower.includes('vinyl') || (lower.includes('banner') && !lower.includes('standard'))) {
+                    if (lower !== 'laminate') document.getElementById('vinylSelect').appendChild(opt);
+                } else if (lower.includes('standard') || lower.includes('sign') || lower.includes('grommett')) {
                     if (!lower.includes('grommett')) document.getElementById('itemSelect').appendChild(opt);
                 }
             }
@@ -101,9 +94,8 @@
 
         function togglePosterCustom() {
             const val = document.getElementById('posterSelect').value.toLowerCase();
-            const isCustom = val.includes('custom');
-            document.getElementById('posterCustomFields').classList.toggle('hidden', !isCustom);
-            document.getElementById('posterStandardQty').classList.toggle('hidden', isCustom);
+            document.getElementById('posterCustomFields').classList.toggle('hidden', !val.includes('custom'));
+            document.getElementById('posterStandardQty').classList.toggle('hidden', val.includes('custom'));
         }
 
         function calculate() {
@@ -122,15 +114,14 @@
                 if (addLam === 'yes') price += (pricingData['Laminate'] || 0) * iQty;
             } else if (pType !== "none") {
                 if (pType.toLowerCase().includes('custom')) {
-                    if (isNaN(pH) || isNaN(pW)) return alert("Enter Height and Width for Custom Poster!");
+                    if (isNaN(pH) || isNaN(pW)) return alert("Enter H & W for Poster!");
                     price = (pH * pW / 144) * 8.50;
                 } else if (!isNaN(pQty)) {
                     price = pQty * pricingData[pType];
                 }
-            } else { return alert("Please select an item and enter a number!"); }
+            } else { return alert("Select an item first!"); }
 
             if (gQty > 0) price += pricingData[`Grommett ${gQty} set${gQty > 1 ? 's' : ''}`] || 0;
-
             document.getElementById('total').innerText = "$" + price.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
             document.getElementById('resultBox').classList.remove('hidden');
         }
