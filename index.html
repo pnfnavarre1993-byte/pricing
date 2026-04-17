@@ -8,40 +8,38 @@
 <body class="bg-gray-100 p-4 flex justify-center">
     <div class="bg-white p-6 rounded-2xl shadow-xl w-full max-w-md border border-gray-200">
         <h1 class="text-2xl font-bold mb-4 text-blue-800 border-b pb-4 text-center tracking-tight">Shop Quote Tool</h1>
-        <div id="status" class="text-center text-[10px] font-bold py-1 mb-4 rounded bg-yellow-100 text-yellow-700 italic">Syncing with Google Sheet...</div>
+        <div id="status" class="text-center text-[10px] font-bold py-1 mb-4 rounded bg-yellow-100 text-yellow-700 italic">Syncing Master List...</div>
 
         <div class="mb-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
             <h2 class="font-bold text-blue-700 uppercase text-[10px] mb-2 tracking-widest text-center">Custom Products (3.5x)</h2>
-            <select id="vinylSelect" class="w-full p-2 border-2 border-gray-200 rounded-lg mb-2 text-sm outline-none"><option value="none">-- Select Product --</option></select>
-            <input id="vinylLen" type="number" step="any" placeholder="Enter Length (Feet)" class="w-full p-2 border-2 border-gray-200 rounded-lg text-sm outline-none">
+            <select id="customSelect" class="w-full p-2 border-2 border-gray-200 rounded-lg mb-2 text-sm outline-none"><option value="none">-- Select Product --</option></select>
+            <input id="customLen" type="number" step="any" placeholder="Enter Feet" class="w-full p-2 border-2 border-gray-200 rounded-lg text-sm outline-none">
         </div>
 
         <div class="mb-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
-            <h2 class="font-bold text-emerald-700 uppercase text-[10px] mb-2 tracking-widest text-center">Standard Banners & Yard Signs (Direct)</h2>
-            <select id="itemSelect" class="w-full p-2 border-2 border-gray-200 rounded-lg mb-2 text-sm outline-none"><option value="none">-- Select Item --</option></select>
-            <input id="itemQty" type="number" step="1" placeholder="Quantity" class="w-full p-2 border-2 border-gray-200 rounded-lg text-sm outline-none">
+            <h2 class="font-bold text-emerald-700 uppercase text-[10px] mb-2 tracking-widest text-center">Standard Banners & Signs</h2>
+            <select id="standardSelect" class="w-full p-2 border-2 border-gray-200 rounded-lg mb-2 text-sm outline-none"><option value="none">-- Select Item --</option></select>
+            <input id="standardQty" type="number" step="1" placeholder="Quantity" class="w-full p-2 border-2 border-gray-200 rounded-lg text-sm outline-none">
         </div>
 
         <div class="mb-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
             <h2 class="font-bold text-orange-600 uppercase text-[10px] mb-2 tracking-widest text-center">Posters</h2>
-            <select id="posterSelect" onchange="togglePosterCustom()" class="w-full p-2 border-2 border-gray-200 rounded-lg mb-2 text-sm outline-none"><option value="none">-- Select Size --</option></select>
-            <div id="posterStandardQty"><input id="pQty" type="number" step="1" placeholder="Quantity" class="w-full p-2 border-2 border-gray-200 rounded-lg text-sm outline-none"></div>
-            <div id="posterCustomFields" class="hidden space-y-2">
-                <div class="grid grid-cols-2 gap-2">
-                    <input id="pH" type="number" step="any" placeholder="H (In)" class="p-2 border-2 border-gray-200 rounded-lg text-sm outline-none">
-                    <input id="pW" type="number" step="any" placeholder="W (In)" class="p-2 border-2 border-gray-200 rounded-lg text-sm outline-none">
-                </div>
+            <select id="posterSelect" onchange="togglePoster()" class="w-full p-2 border-2 border-gray-200 rounded-lg mb-2 text-sm outline-none"><option value="none">-- Select Size --</option></select>
+            <div id="pStdBox"><input id="pQty" type="number" step="1" placeholder="Quantity" class="w-full p-2 border-2 border-gray-200 rounded-lg text-sm outline-none"></div>
+            <div id="pCustBox" class="hidden grid grid-cols-2 gap-2">
+                <input id="pH" type="number" step="any" placeholder="H (In)" class="p-2 border-2 border-gray-200 rounded-lg text-sm outline-none">
+                <input id="pW" type="number" step="any" placeholder="W (In)" class="p-2 border-2 border-gray-200 rounded-lg text-sm outline-none">
             </div>
         </div>
 
-        <div class="mb-4 p-3 bg-blue-50 rounded-xl border border-blue-200 flex gap-2">
-            <div class="flex-1">
+        <div class="mb-4 p-3 bg-blue-50 rounded-xl border border-blue-200 grid grid-cols-2 gap-2">
+            <div>
                 <span class="text-[9px] font-bold text-gray-500 uppercase">Laminate?</span>
-                <select id="laminate" class="w-full p-1 rounded text-xs font-bold text-blue-800 border"><option value="no">NO</option><option value="yes">YES</option></select>
+                <select id="lam" class="w-full p-1 rounded text-xs font-bold text-blue-800 border"><option value="no">NO</option><option value="yes">YES</option></select>
             </div>
-            <div class="flex-1">
+            <div>
                 <span class="text-[9px] font-bold text-gray-500 uppercase">Grommetts?</span>
-                <select id="grommetSelect" class="w-full p-1 rounded text-xs font-bold text-blue-800 border"><option value="0">NONE</option><option value="1">1 SET</option><option value="2">2 SETS</option></select>
+                <select id="grom" class="w-full p-1 rounded text-xs font-bold text-blue-800 border"><option value="0">NONE</option><option value="1">1 SET</option><option value="2">2 SETS</option></select>
             </div>
         </div>
 
@@ -53,81 +51,66 @@
     </div>
 
     <script>
-        const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpd0v8hfAE_Ok5bjHS-OnuCjL6dJoaoXm2qGEOV47Ph2AGbZ7deEQd5ln0xfDONyAxIX7sIkr9saB5/pub?output=csv";
-        let vData = {}, iData = {}, pData = {};
+        const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTWBKchl9PZg5iLiG73UCxO_CFU7NOAT8SpcYQ_HeGDoQ-lAScneRG1Sn258LlvvMs7UpJTHPQXvhqq/pub?output=csv";
+        let master = {};
 
         async function init() {
             try {
-                const response = await fetch(SHEET_URL + "&cache=" + Date.now());
-                const text = await response.text();
-                const rows = text.split(/\r?\n/).map(row => row.split(','));
+                const res = await fetch(SHEET_URL + "&cache=" + Date.now());
+                const data = await res.text();
+                data.split(/\r?\n/).slice(1).forEach(row => {
+                    const [cat, name, price] = row.split(',');
+                    if (!cat || !name) return;
+                    const cleanCat = cat.trim().toLowerCase();
+                    const cleanName = name.trim();
+                    master[cleanName] = { cat: cleanCat, price: parseFloat(price) };
 
-                rows.slice(1).forEach(cols => {
-                    // Column Index 0/1: Vinyl/Custom
-                    if (cols[0]?.trim()) {
-                        vData[cols[0].trim()] = parseFloat(cols[1]);
-                        if (cols[0].trim().toLowerCase() !== 'laminate') {
-                            let opt = document.createElement('option'); opt.value = cols[0].trim(); opt.textContent = cols[0].trim();
-                            document.getElementById('vinylSelect').appendChild(opt);
-                        }
-                    }
-                    // Column Index 3/4: Standard Banners & Signs
-                    if (cols[3]?.trim()) {
-                        iData[cols[3].trim()] = parseFloat(cols[4]);
-                        if (!cols[3].toLowerCase().includes('grommett')) {
-                            let opt = document.createElement('option'); opt.value = cols[3].trim(); opt.textContent = cols[3].trim();
-                            document.getElementById('itemSelect').appendChild(opt);
-                        }
-                    }
-                    // Column Index 6/7: Posters
-                    if (cols[6]?.trim()) {
-                        pData[cols[6].trim()] = parseFloat(cols[7]);
-                        let opt = document.createElement('option'); opt.value = cols[6].trim(); opt.textContent = cols[6].trim();
+                    let opt = document.createElement('option'); opt.value = cleanName; opt.textContent = cleanName;
+                    if (cleanCat === 'custom' && cleanName.toLowerCase() !== 'laminate') document.getElementById('customSelect').appendChild(opt);
+                    if (cleanCat === 'standard' && !cleanName.toLowerCase().includes('grommett')) document.getElementById('standardSelect').appendChild(opt);
+                    if (cleanCat === 'poster') {
+                        opt.textContent = cleanName.replace(/poster|size/gi, '').trim();
                         document.getElementById('posterSelect').appendChild(opt);
                     }
                 });
-
-                document.getElementById('status').innerText = "✅ Prices Synced";
+                document.getElementById('status').innerText = "✅ Master List Synced";
                 document.getElementById('status').className = "text-center text-[10px] font-bold py-1 mb-4 rounded bg-green-100 text-green-700";
-            } catch (e) {
-                document.getElementById('status').innerText = "❌ Connection Failed";
-            }
+            } catch (e) { document.getElementById('status').innerText = "❌ Sync Error"; }
         }
 
-        function togglePosterCustom() {
-            const val = document.getElementById('posterSelect').value.toLowerCase();
-            const isCustom = val.includes('custom');
-            document.getElementById('posterCustomFields').classList.toggle('hidden', !isCustom);
-            document.getElementById('posterStandardQty').classList.toggle('hidden', isCustom);
+        function togglePoster() {
+            const isCustom = document.getElementById('posterSelect').value.toLowerCase().includes('custom');
+            document.getElementById('pCustBox').classList.toggle('hidden', !isCustom);
+            document.getElementById('pStdBox').classList.toggle('hidden', isCustom);
         }
 
         function calculate() {
-            const vType = document.getElementById('vinylSelect').value, vLen = parseFloat(document.getElementById('vinylLen').value);
-            const iType = document.getElementById('itemSelect').value, iQty = parseFloat(document.getElementById('itemQty').value);
+            const cType = document.getElementById('customSelect').value, cLen = parseFloat(document.getElementById('customLen').value);
+            const sType = document.getElementById('standardSelect').value, sQty = parseFloat(document.getElementById('standardQty').value);
             const pType = document.getElementById('posterSelect').value, pQty = parseFloat(document.getElementById('pQty').value);
             const pH = parseFloat(document.getElementById('pH').value), pW = parseFloat(document.getElementById('pW').value);
-            const addLam = document.getElementById('laminate').value, gQty = parseInt(document.getElementById('grommetSelect').value);
+            const useLam = document.getElementById('lam').value, gCount = document.getElementById('grom').value;
+            
             let price = 0;
+            const lamCost = master['Laminate']?.price || 0;
 
-            if (vType !== "none" && !isNaN(vLen)) {
-                price = (vLen * (vData[vType] + (addLam === 'yes' ? (vData['Laminate'] || 0) : 0))) * 3.5;
-            } else if (iType !== "none" && !isNaN(iQty)) {
-                price = iQty * iData[iType];
-                if (addLam === 'yes') price += (vData['Laminate'] || 0) * iQty;
+            if (cType !== "none" && !isNaN(cLen)) {
+                price = (cLen * (master[cType].price + (useLam === 'yes' ? lamCost : 0))) * 3.5;
+            } else if (sType !== "none" && !isNaN(sQty)) {
+                price = sQty * master[sType].price;
+                if (useLam === 'yes') price += (lamCost * sQty);
             } else if (pType !== "none") {
                 if (pType.toLowerCase().includes('custom')) {
                     if (isNaN(pH) || isNaN(pW)) return alert("Enter H & W");
-                    price = (pH * pW / 144) * 8.50;
-                } else if (!isNaN(pQty)) {
-                    price = pQty * pData[pType];
-                }
-            } else { return alert("Select an item first!"); }
+                    price = (pH * pW / 144) * master[pType].price;
+                } else if (!isNaN(pQty)) { price = pQty * master[pType].price; }
+            } else { return alert("Select an item!"); }
 
-            if (gQty > 0) {
-                const gKey = `Grommett ${gQty} set${gQty > 1 ? 's' : ''}`;
-                price += iData[gKey] || 0;
+            if (gCount !== "0") {
+                const gKey = `Grommett ${gCount} set${gCount === '2' ? 's' : ''}`;
+                price += (master[gKey]?.price || 0);
             }
-            document.getElementById('total').innerText = "$" + price.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            document.getElementById('total').innerText = "$" + price.toLocaleString(undefined, {minimumFractionDigits: 2});
             document.getElementById('resultBox').classList.remove('hidden');
         }
         init();
