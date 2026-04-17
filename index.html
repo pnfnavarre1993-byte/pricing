@@ -54,7 +54,7 @@
 
     <script>
         const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpd0v8hfAE_Ok5bjHS-OnuCjL6dJoaoXm2qGEOV47Ph2AGbZ7deEQd5ln0xfDONyAxIX7sIkr9saB5/pub?output=csv";
-        let pricingData = {};
+        let vData = {}, iData = {}, pData = {};
 
         async function init() {
             try {
@@ -63,26 +63,30 @@
                 const rows = text.split(/\r?\n/).map(row => row.split(','));
 
                 rows.slice(1).forEach(cols => {
-                    // Vinyls (A,B)
-                    if (cols[0] && cols[1]) pricingData[cols[0].trim()] = parseFloat(cols[1]);
-                    // Standards (D,E)
-                    if (cols[3] && cols[4]) pricingData[cols[3].trim()] = parseFloat(cols[4]);
-                    // Posters (G,H)
-                    if (cols[6] && cols[7]) pricingData[cols[6].trim()] = parseFloat(cols[7]);
+                    // Column Index 0/1: Vinyl/Custom
+                    if (cols[0]?.trim()) {
+                        vData[cols[0].trim()] = parseFloat(cols[1]);
+                        if (cols[0].trim().toLowerCase() !== 'laminate') {
+                            let opt = document.createElement('option'); opt.value = cols[0].trim(); opt.textContent = cols[0].trim();
+                            document.getElementById('vinylSelect').appendChild(opt);
+                        }
+                    }
+                    // Column Index 3/4: Standard Banners & Signs
+                    if (cols[3]?.trim()) {
+                        iData[cols[3].trim()] = parseFloat(cols[4]);
+                        if (!cols[3].toLowerCase().includes('grommett')) {
+                            let opt = document.createElement('option'); opt.value = cols[3].trim(); opt.textContent = cols[3].trim();
+                            document.getElementById('itemSelect').appendChild(opt);
+                        }
+                    }
+                    // Column Index 6/7: Posters
+                    if (cols[6]?.trim()) {
+                        pData[cols[6].trim()] = parseFloat(cols[7]);
+                        let opt = document.createElement('option'); opt.value = cols[6].trim(); opt.textContent = cols[6].trim();
+                        document.getElementById('posterSelect').appendChild(opt);
+                    }
                 });
 
-                for (let key in pricingData) {
-                    let opt = document.createElement('option'); opt.value = key; opt.textContent = key;
-                    const low = key.toLowerCase();
-                    if (low.includes('poster')) {
-                        opt.textContent = key.replace(/poster|size/gi, '').trim();
-                        document.getElementById('posterSelect').appendChild(opt);
-                    } else if (low.includes('vinyl') || (low.includes('banner') && !low.includes('standard'))) {
-                        if (low !== 'laminate') document.getElementById('vinylSelect').appendChild(opt);
-                    } else if (!low.includes('grommett')) {
-                        document.getElementById('itemSelect').appendChild(opt);
-                    }
-                }
                 document.getElementById('status').innerText = "✅ Prices Synced";
                 document.getElementById('status').className = "text-center text-[10px] font-bold py-1 mb-4 rounded bg-green-100 text-green-700";
             } catch (e) {
@@ -92,8 +96,9 @@
 
         function togglePosterCustom() {
             const val = document.getElementById('posterSelect').value.toLowerCase();
-            document.getElementById('posterCustomFields').classList.toggle('hidden', !val.includes('custom'));
-            document.getElementById('posterStandardQty').classList.toggle('hidden', val.includes('custom'));
+            const isCustom = val.includes('custom');
+            document.getElementById('posterCustomFields').classList.toggle('hidden', !isCustom);
+            document.getElementById('posterStandardQty').classList.toggle('hidden', isCustom);
         }
 
         function calculate() {
@@ -105,20 +110,23 @@
             let price = 0;
 
             if (vType !== "none" && !isNaN(vLen)) {
-                price = (vLen * (pricingData[vType] + (addLam === 'yes' ? (pricingData['Laminate'] || 0) : 0))) * 3.5;
+                price = (vLen * (vData[vType] + (addLam === 'yes' ? (vData['Laminate'] || 0) : 0))) * 3.5;
             } else if (iType !== "none" && !isNaN(iQty)) {
-                price = iQty * pricingData[iType];
-                if (addLam === 'yes') price += (pricingData['Laminate'] || 0) * iQty;
+                price = iQty * iData[iType];
+                if (addLam === 'yes') price += (vData['Laminate'] || 0) * iQty;
             } else if (pType !== "none") {
                 if (pType.toLowerCase().includes('custom')) {
                     if (isNaN(pH) || isNaN(pW)) return alert("Enter H & W");
                     price = (pH * pW / 144) * 8.50;
                 } else if (!isNaN(pQty)) {
-                    price = pQty * pricingData[pType];
+                    price = pQty * pData[pType];
                 }
             } else { return alert("Select an item first!"); }
 
-            if (gQty > 0) price += pricingData[`Grommett ${gQty} set${gQty > 1 ? 's' : ''}`] || 0;
+            if (gQty > 0) {
+                const gKey = `Grommett ${gQty} set${gQty > 1 ? 's' : ''}`;
+                price += iData[gKey] || 0;
+            }
             document.getElementById('total').innerText = "$" + price.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
             document.getElementById('resultBox').classList.remove('hidden');
         }
