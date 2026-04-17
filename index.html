@@ -1,185 +1,201 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Pack-N-Fax Pricing Tool</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-100 p-4 flex justify-center">
-    <div class="bg-white p-6 rounded-2xl shadow-xl w-full max-w-md border border-gray-200">
-        <h1 class="text-2xl font-bold mb-4 text-blue-800 border-b pb-4 text-center">Shop Quote Tool</h1>
-        
-        <div id="status" class="text-center text-[10px] font-bold py-1 mb-4 rounded bg-yellow-100 text-yellow-700">Connecting to New Sheet...</div>
+<script>
+    const URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTWBKchl9PZg5iLiG73UCxO_CFU7NOAT8SpcYQ_HeGDoQ-lAScneRG1Sn258LlvvMs7UpJTHPQXvhqq/pub?output=csv";
 
-        <div class="space-y-4">
-            <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
-                <h2 class="font-bold text-blue-700 uppercase text-[10px] mb-2 tracking-widest text-center">Custom Products (3.5x)</h2>
-                <select id="customSelect" class="w-full p-2 border-2 border-gray-200 rounded-lg text-sm outline-none">
-                    <option value="none">-- Select Product --</option>
-                </select>
-                <input id="customLen" type="number" step="any" placeholder="Enter Length (Feet)" class="w-full p-2 border-2 border-gray-200 rounded-lg text-sm mt-2 outline-none">
-            </div>
+    let db = {};
 
-            <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
-                <h2 class="font-bold text-emerald-700 uppercase text-[10px] mb-2 tracking-widest text-center">Standard Banners & Signs</h2>
-                <select id="standardSelect" class="w-full p-2 border-2 border-gray-200 rounded-lg text-sm outline-none">
-                    <option value="none">-- Select Item --</option>
-                </select>
-                <input id="standardQty" type="number" step="1" placeholder="Quantity" class="w-full p-2 border-2 border-gray-200 rounded-lg text-sm mt-2 outline-none">
-            </div>
+    async function load() {
+        const status = document.getElementById('status');
+        try {
+            const r = await fetch(URL + "&t=" + Date.now(), { cache: "no-store" });
+            if (!r.ok) throw new Error("Network error: " + r.status);
+            const t = await r.text();
 
-            <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
-                <h2 class="font-bold text-orange-600 uppercase text-[10px] mb-2 tracking-widest text-center">Posters</h2>
-                <select id="posterSelect" onchange="togglePoster()" class="w-full p-2 border-2 border-gray-200 rounded-lg text-sm outline-none">
-                    <option value="none">-- Select Size --</option>
-                </select>
-                <div id="pStdBox" class="mt-2">
-                    <input id="pQty" type="number" step="1" placeholder="Quantity" class="w-full p-2 border-2 border-gray-200 rounded-lg text-sm outline-none">
-                </div>
-                <div id="pCustBox" class="hidden grid grid-cols-2 gap-2 mt-2">
-                    <input id="pH" type="number" step="any" placeholder="H (In)" class="p-2 border-2 border-gray-200 rounded-lg text-sm outline-none">
-                    <input id="pW" type="number" step="any" placeholder="W (In)" class="p-2 border-2 border-gray-200 rounded-lg text-sm outline-none">
-                </div>
-            </div>
+            clearSelect('cSel');
+            clearSelect('sSel');
+            clearSelect('pSel');
+            db = {};
 
-            <div class="p-3 bg-blue-50 rounded-xl border border-blue-200 grid grid-cols-2 gap-2">
-                <div>
-                    <span class="text-[9px] font-bold text-gray-500 uppercase ml-1">Laminate?</span>
-                    <select id="lam" class="w-full p-1 rounded text-xs font-bold text-blue-800 border-blue-100 outline-none">
-                        <option value="no">NO</option>
-                        <option value="yes">YES</option>
-                    </select>
-                </div>
-                <div>
-                    <span class="text-[9px] font-bold text-gray-500 uppercase ml-1">Grommetts?</span>
-                    <select id="grom" class="w-full p-1 rounded text-xs font-bold text-blue-800 border-blue-100 outline-none">
-                        <option value="0">NONE</option>
-                        <option value="1">1 SET</option>
-                        <option value="2">2 SETS</option>
-                    </select>
-                </div>
-            </div>
-        </div>
+            const rows = t.split(/\r?\n/);
 
-        <button onclick="calculate()" class="w-full bg-blue-600 text-white font-black py-4 rounded-xl text-xl shadow-lg mt-4 active:scale-95 transition">CALCULATE</button>
+            rows.forEach((row, idx) => {
+                if (!row.trim()) return;
 
-        <div id="resultBox" class="hidden mt-4 p-4 bg-green-100 border-2 border-green-500 rounded-xl text-center">
-            <p id="total" class="text-4xl font-black text-green-900">$0.00</p>
-            <button onclick="location.reload()" class="mt-2 text-[10px] text-green-700 underline font-bold uppercase tracking-widest">Clear & Reset</button>
-        </div>
-    </div>
+                const cols = row.split(',').map(c => c.trim());
+                if (cols.length === 0) return;
 
-    <script>
-        // REPLACE THE LINK BELOW WITH YOUR NEW GOOGLE CSV LINK
-        const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpd0v8hfAE_Ok5bjHS-OnuCjL6dJoaoXm2qGEOV47Ph2AGbZ7deEQd5ln0xfDONyAxIX7sIkr9saB5/pub?output=csv";
-        
-        let masterData = {};
-
-        async function init() {
-            try {
-                const response = await fetch(SHEET_URL + "&t=" + Date.now());
-                const text = await response.text();
-                const rows = text.split(/\r?\n/).slice(1); // Skip header
-
-                if (rows.length === 0 || rows[0].trim() === "") {
-                    throw new Error("Sheet appears empty");
+                // Detect header rows and skip them
+                const first = (cols[0] || '').toLowerCase();
+                if (
+                    first === 'category' ||
+                    first === 'product' ||
+                    first === 'poster size'
+                ) {
+                    return;
                 }
 
-                rows.forEach(row => {
-                    const cols = row.split(',');
-                    if (cols.length < 3) return;
+                // --- CASE 1: 3-column rows: Category, Name, Price ---
+                if (cols.length >= 3 && cols[0] && cols[1]) {
+                    const catRaw   = cols[0];
+                    const nameRaw  = cols[1];
+                    const priceRaw = cols[2].replace(/[^0-9.\-]/g, '');
+                    const price    = parseFloat(priceRaw);
 
-                    const category = cols[0].trim().toLowerCase();
-                    const productName = cols[1].trim();
-                    const price = parseFloat(cols[2]);
+                    if (!nameRaw || isNaN(price)) return;
 
-                    if (!productName || isNaN(price)) return;
+                    addItem(catRaw, nameRaw, price);
+                    return;
+                }
 
-                    // Save to master data
-                    masterData[productName] = { category, price };
+                // --- CASE 2: 2-column rows: Name, Price ---
+                if (cols.length >= 2) {
+                    const nameRaw  = cols[0].replace(/^"|"$/g, '');
+                    const priceRaw = cols[1].replace(/[^0-9.\-]/g, '');
+                    const price    = parseFloat(priceRaw);
 
-                    // Add to correct dropdown
-                    let opt = document.createElement('option');
-                    opt.value = productName;
-                    opt.textContent = productName;
+                    if (!nameRaw || isNaN(price)) return;
 
-                    if (category.includes('custom') && productName.toLowerCase() !== 'laminate') {
-                        document.getElementById('customSelect').appendChild(opt);
-                    } else if (category.includes('standard') && !productName.toLowerCase().includes('grommett')) {
-                        document.getElementById('standardSelect').appendChild(opt);
-                    } else if (category.includes('poster')) {
-                        opt.textContent = productName.replace(/poster|size/gi, '').trim() || productName;
-                        document.getElementById('posterSelect').appendChild(opt);
+                    // Infer category from the name
+                    let catRaw = 'other';
+                    const lower = nameRaw.toLowerCase();
+
+                    if (lower.startsWith('standard banner')) {
+                        catRaw = 'standard';
+                    } else if (lower.startsWith('standard yard sign')) {
+                        catRaw = 'standard';
+                    } else if (lower.startsWith('poster')) {
+                        catRaw = 'poster';
                     }
-                });
 
-                const count = Object.keys(masterData).length;
-                document.getElementById('status').innerText = `✅ ${count} Items Synced Successfully`;
-                document.getElementById('status').className = "text-center text-[10px] font-bold py-1 mb-4 rounded bg-green-100 text-green-700";
-
-            } catch (err) {
-                document.getElementById('status').innerText = "❌ ERROR: Check Sheet Link or Content";
-                document.getElementById('status').className = "text-center text-[10px] font-bold py-1 mb-4 rounded bg-red-100 text-red-700";
-                console.error(err);
-            }
-        }
-
-        function togglePoster() {
-            const val = document.getElementById('posterSelect').value.toLowerCase();
-            const isCustom = val.includes('custom');
-            document.getElementById('pCustBox').classList.toggle('hidden', !isCustom);
-            document.getElementById('pStdBox').classList.toggle('hidden', isCustom);
-        }
-
-        function calculate() {
-            const cItem = document.getElementById('customSelect').value;
-            const cLen = parseFloat(document.getElementById('customLen').value);
-            const sItem = document.getElementById('standardSelect').value;
-            const sQty = parseFloat(document.getElementById('standardQty').value);
-            const pItem = document.getElementById('posterSelect').value;
-            const pQty = parseFloat(document.getElementById('pQty').value);
-            const pH = parseFloat(document.getElementById('pH').value);
-            const pW = parseFloat(document.getElementById('pW').value);
-            const useLam = document.getElementById('lam').value;
-            const gCount = document.getElementById('grom').value;
-
-            let finalPrice = 0;
-            const lamBasePrice = masterData['Laminate']?.price || 0;
-
-            if (cItem !== "none" && !isNaN(cLen)) {
-                // Custom: (Base + optional Laminate) * Length * 3.5
-                const base = masterData[cItem].price;
-                const lam = (useLam === 'yes') ? lamBasePrice : 0;
-                finalPrice = (cLen * (base + lam)) * 3.5;
-            } 
-            else if (sItem !== "none" && !isNaN(sQty)) {
-                // Standard: Price * Qty + optional Laminate (flat add)
-                finalPrice = sQty * masterData[sItem].price;
-                if (useLam === 'yes') finalPrice += (lamBasePrice * sQty);
-            } 
-            else if (pItem !== "none") {
-                // Posters
-                if (pItem.toLowerCase().includes('custom')) {
-                    if (isNaN(pH) || isNaN(pW)) return alert("Please enter Height and Width for Custom Poster");
-                    finalPrice = (pH * pW / 144) * masterData[pItem].price;
-                } else if (!isNaN(pQty)) {
-                    finalPrice = pQty * masterData[pItem].price;
+                    addItem(catRaw, nameRaw, price);
+                    return;
                 }
-            } else {
-                return alert("Please select an item and enter a quantity or length!");
-            }
+            });
 
-            // Add Grommetts at the very end
-            if (gCount !== "0") {
-                const gKey = `Grommett ${gCount} set${gCount === '2' ? 's' : ''}`;
-                finalPrice += (masterData[gKey]?.price || 0);
-            }
+            status.innerText = "✅ Items Synced";
+            status.className = "text-center text-[10px] font-bold py-1 mb-4 rounded bg-green-100 text-green-700";
+        } catch (e) {
+            console.error(e);
+            status.innerText = "❌ Sync Error";
+            status.className = "text-center text-[10px] font-bold py-1 mb-4 rounded bg-red-100 text-red-700";
+        }
+    }
 
-            document.getElementById('total').innerText = "$" + finalPrice.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-            document.getElementById('resultBox').classList.remove('hidden');
+    function addItem(catRaw, nameRaw, price) {
+        const catLower  = (catRaw || '').toLowerCase();
+        const nameLower = (nameRaw || '').toLowerCase();
+
+        db[nameRaw] = { cat: catLower, price };
+
+        const opt = document.createElement('option');
+        opt.value = nameRaw;
+        opt.textContent = nameRaw;
+
+        // Custom products (3.5x)
+        if (catLower.includes('custom') && nameLower !== 'laminate') {
+            document.getElementById('cSel').appendChild(opt);
+            return;
         }
 
-        init();
-    </script>
-</body>
-</html>
+        // Standard banners & yard signs
+        if (catLower.includes('standard')) {
+            // Don’t show grommet add-ons here
+            if (!nameLower.includes('grommett') && !nameLower.includes('grommet')) {
+                document.getElementById('sSel').appendChild(opt);
+            }
+            return;
+        }
+
+        // Posters (both from first table and "Poster ..." rows)
+        if (catLower.includes('poster')) {
+            opt.textContent = nameRaw
+                .replace(/poster size/gi, '')
+                .replace(/poster/gi, '')
+                .replace(/"/g, '')
+                .trim();
+            document.getElementById('pSel').appendChild(opt);
+            return;
+        }
+
+        // Add-on (grommetts) → keep in db only, no dropdown
+        if (catLower.includes('add-on') || catLower.includes('addon')) {
+            return;
+        }
+    }
+
+    function clearSelect(id) {
+        const sel = document.getElementById(id);
+        while (sel.options.length > 1) {
+            sel.remove(1);
+        }
+    }
+
+    function toggleP() {
+        const val = document.getElementById('pSel').value || '';
+        const isC = val.toLowerCase().includes('custom');
+        document.getElementById('pCust').classList.toggle('hidden', !isC);
+        document.getElementById('pStd').classList.toggle('hidden', isC);
+    }
+
+    function calculate() {
+        const cN = document.getElementById('cSel').value;
+        const cL = parseFloat(document.getElementById('cLen').value);
+
+        const sN = document.getElementById('sSel').value;
+        const sQ = parseFloat(document.getElementById('sQty').value);
+
+        const pN = document.getElementById('pSel').value;
+        const pQ = parseFloat(document.getElementById('pQty').value);
+
+        const pH = parseFloat(document.getElementById('pH').value);
+        const pW = parseFloat(document.getElementById('pW').value);
+
+        const lam = document.getElementById('lam').value;
+        const gr  = document.getElementById('grom').value;
+
+        let total = 0;
+        const lamPrice = db['Laminate']?.price || 0;
+
+        // Custom products (3.5x)
+        if (cN !== "none" && !isNaN(cL)) {
+            if (!db[cN]) return alert("Selected custom item not found in price list.");
+            const base = db[cN].price + (lam === 'yes' ? lamPrice : 0);
+            total = cL * base * 3.5;
+        }
+        // Standard banners & signs
+        else if (sN !== "none" && !isNaN(sQ)) {
+            if (!db[sN]) return alert("Selected standard item not found in price list.");
+            total = sQ * db[sN].price;
+            if (lam === 'yes') total += lamPrice * sQ;
+        }
+        // Posters
+        else if (pN !== "none") {
+            if (!db[pN]) return alert("Selected poster item not found in price list.");
+            const isCustomPoster = pN.toLowerCase().includes('custom');
+
+            if (isCustomPoster) {
+                if (isNaN(pH) || isNaN(pW)) return alert("Enter height and width for custom poster.");
+                const areaSqFt = (pH * pW) / 144;
+                total = areaSqFt * db[pN].price;
+            } else {
+                if (isNaN(pQ)) return alert("Enter quantity for poster.");
+                total = pQ * db[pN].price;
+            }
+        } else {
+            return alert("Select an item and enter required values.");
+        }
+
+        // Grommetts add-on
+        if (gr !== "0") {
+            const gName1 = `Grommett ${gr} set`;
+            const gName2 = `Grommet ${gr} set`;
+            if (db[gName1]) total += db[gName1].price;
+            else if (db[gName2]) total += db[gName2].price;
+        }
+
+        document.getElementById('total').innerText =
+            "$" + total.toLocaleString(undefined, { minimumFractionDigits: 2 });
+        document.getElementById('resBox').classList.remove('hidden');
+    }
+
+    load();
+</script>
